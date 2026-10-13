@@ -1,718 +1,348 @@
-CS4801 DevOps Lab
+# CS4801 DevOps Lab — CI/CD Pipeline Lab Assessment
 
-CONTINUOUS EVALUATION EXAMINATION QUESTION PAPER
+**Name:** Narenkarthik K  **Roll No:** 23011102055  **Question Set:** F — Successful-registration audit log
 
-CI/CD PIPELINE LAB ASSESSMENT
+This is a Java course registration service built with Maven, versioned with Git and GitHub, built and tested by a Jenkins Declarative Pipeline, and accompanied by an Nginx deployment on Kubernetes using Minikube.
 
-By Narenkarthik K 23011102055
+**Repository:** https://github.com/narenkumarchandran/student_registration_cia
+**Feature branch:** `feature/course-registration-refactor` (merged into `main`)
 
-Java based student registration application used to show CI/CD pipleline
+---
 
-The project uses Maven to build and test the application, Git and GitHub for version control, Jenkins to automate the build pipeline, and Docker Desktop with Minikube to practise Kubernetes deployment.
+## 1. Setup and Execution Instructions
 
+### Requirements
 
+You need Java JDK 17, Apache Maven, Git, Jenkins, Docker Desktop, Minikube and kubectl. All commands below were run in Windows PowerShell.
 
-The given question set was "F"
+### Clone
 
-requirements
+```powershell
+git clone https://github.com/narenkumarchandran/student_registration_cia.git
+cd student_registration_cia
+git checkout main
+```
 
-Java JDK
+### Build, test and package (run from the repository root)
 
+```powershell
+mvn clean test
+mvn package
+```
 
+The packaged artifact is written to `course-registration-app/target/course-registration-app-1.0-SNAPSHOT.jar`, and JUnit reports are written to `course-registration-app/target/surefire-reports/`.
 
-Apache Maven
+### Deploy to Minikube
 
-
-
-Git
-
-
-
-Jenkins
-
-
-
-Docker Desktop
-
-
-
-Minikube and kubectl
-
-
-
-Clone the Repo
-
-
-
-git clone https://github.com/narenkumarchandran/student\_registration\_cia.git
-
-cd student\_registration\_cia
-
-git checkout feature/course-registration-refactor
-
-
-
-Build and Test
-
-
-
-Run these commands
-
-
-
-mvn clean
-
-mvn test
-
-mvn clean package
-
-
-
-Deploy the Kubernetes pods
-
-
-
-
-
+```powershell
 minikube start --driver=docker
-
 kubectl apply -f deployment.yaml
-
 kubectl apply -f service.yaml
-
 kubectl get deployments
-
-kubectl get pods
-
+kubectl get pods -l app=nginx
 kubectl get services
+minikube service nginx-service --url
+```
+
+With the Docker driver on Windows, `minikube service --url` opens a tunnel, so the terminal must stay open while you access the URL.
+
+---
+
+## 2. Git Evidence
+
+### Branch and commit history
+
+```text
+PS> git log --oneline --graph --all -n 12
+*   18a1635 (HEAD -> main, origin/main) Merge branch 'feature/course-registration-refactor' into main
+|\
+| * 8c85608 (origin/feature/course-registration-refactor, feature/course-registration-refactor) added read me
+| * 2cf44ec feat: add Kubernetes deployment and service
+| * ca23c0f fix: remove BOM from Jenkinsfile
+| * af05d68 fix: use explicit Maven path in Jenkins
+| * f2b05c3 fix: save Jenkinsfile without BOM
+| * 50892f8 build: restructure project and add Jenkins pipeline
+|/
+* 4da0a14 feat: add registration audit log
+* edcfda2 reject registration when course is full
+* 234e0f1 cover course capacity boundaries
+* cef2bff Initial student assessment starter
+
+PS> git branch -vv
+  feature/course-registration-refactor 8c85608 [origin/feature/course-registration-refactor] added read me
+* main                                 18a1635 [origin/main] Merge branch 'feature/course-registration-refactor' into main
+```
+
+### Summary of changes by commit
+
+* `234e0f1`: Added JUnit tests for a course at full capacity and a course with exactly one seat left.
+* `edcfda2`: Fixed the capacity check so a full course rejects new registrations.
+* `4da0a14`: Added the in-memory audit log for successful registrations, with its tests (Set F).
+* `50892f8`: Restructured the project into a parent POM plus the `course-registration-app` child module, and added the Jenkinsfile.
+* `f2b05c3`, `af05d68`, `ca23c0f`: Fixed the Jenkinsfile so it runs on the Windows Jenkins agent. These removed the UTF-8 BOM that Notepad added and switched to an explicit Maven path.
+* `2cf44ec`: Added the Kubernetes `deployment.yaml` and `service.yaml`.
+* `18a1635`: Merged the feature branch into `main` with `--no-ff`, so the merge is visible in the history.
+
+The `target/` directory is not committed.
+
+---
+
+## 3. Maven Configuration and Build Evidence
+
+### Project structure
+
+```text
+Student-Starter/
+├── pom.xml                         (parent: com.university:student-starter-parent, packaging pom)
+├── Jenkinsfile
+├── deployment.yaml
+├── service.yaml
+├── README.md
+└── course-registration-app/
+    ├── pom.xml                     (child: com.university:course-registration-app, packaging jar)
+    └── src/
+        ├── main/java/com/university/   Course.java, RegistrationService.java, Student.java
+        └── test/java/com/university/   CourseTest.java, RegistrationServiceTest.java
+```
+
+### Parent and child POMs
+
+* **Parent POM (`pom.xml`):**
+  * It uses `pom` packaging and lists `course-registration-app` in its `<modules>`.
+  * It defines shared properties, including Java 17 and the JUnit 5 version.
+  * It declares the JUnit 5 version once in `<dependencyManagement>`.
+  * It configures the Maven Compiler plugin for Java 17 and the Surefire plugin to run JUnit 5 tests.
+* **Child POM (`course-registration-app/pom.xml`):**
+  * It inherits from the parent through a `<parent>` block (the parent's groupId, artifactId and version, with `<relativePath>../pom.xml</relativePath>`).
+  * It declares the JUnit 5 dependency without a version, so the version comes from the parent's `dependencyManagement`.
+
+The existing source and test files were moved unchanged into the child module's `src/main/java` and `src/test/java`.
+
+### Build results (run from the repository root, excerpt of genuine output)
+
+```text
+PS> mvn clean test
+[INFO] Reactor Build Order:
+[INFO] student-starter-parent                                             [pom]
+[INFO] course-registration-app                                            [jar]
+...
+[INFO] Running com.university.CourseTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.033 s -- in com.university.CourseTest
+[INFO] Running com.university.RegistrationServiceTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in com.university.RegistrationServiceTest
+[INFO] Results:
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Reactor Summary for student-starter-parent 1.0-SNAPSHOT:
+[INFO] student-starter-parent ............................. SUCCESS [  0.299 s]
+[INFO] course-registration-app ............................ SUCCESS [  3.008 s]
+[INFO] BUILD SUCCESS
+[INFO] Finished at: 2026-10-13T11:08:24+05:30
+
+PS> mvn clean package
+...
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
+[INFO] --- jar:3.5.1:jar (default-jar) @ course-registration-app ---
+[INFO] Building jar: C:\Users\iot-a2\Downloads\ci cd cia lab\Student-Starter\course-registration-app\target\course-registration-app-1.0-SNAPSHOT.jar
+[INFO] student-starter-parent ............................. SUCCESS [  0.289 s]
+[INFO] course-registration-app ............................ SUCCESS [  3.031 s]
+[INFO] BUILD SUCCESS
+[INFO] Finished at: 2026-10-13T11:08:30+05:30
+```
 
+The reactor builds the parent first and then the child module.
 
+| Stage | CourseTest | RegistrationServiceTest | Total | Failures | Errors |
+|---|---|---|---|---|---|
+| Baseline (before changes) | 3 | 6 | 9 | 0 | 0 |
+| Capacity tests added, before fix | 3 | 8 | 11 | 1 | 0 |
+| After capacity fix | 3 | 8 | 11 | 0 | 0 |
+| After audit log (final) | 3 | 11 | 14 | 0 | 0 |
 
+---
 
+## 4. Jenkins Pipeline Explanation
 
-3\. Git Evidence
+**Target environment:** The pipeline targets a **Windows** Jenkins agent, so every build command uses `bat` steps. The final Jenkinsfile calls Maven by its full install path on the agent and is saved without a BOM. Maven commands run from the repository root, which is the workspace root, so the parent POM builds the child module through the reactor.
 
+**Stages:**
 
+1. `Checkout` runs `checkout scm` to fetch the branch from GitHub.
+2. `Build and Test` runs `mvn clean test`.
+3. `Package` runs `mvn package`.
 
-Feature branch: feature/course-registration-refactor
+**Post actions:**
 
+```groovy
+post {
+    always  { junit 'course-registration-app/target/surefire-reports/TEST-*.xml' }
+    success { archiveArtifacts artifacts: 'course-registration-app/target/*.jar', fingerprint: true }
+    failure { echo 'Pipeline failed. Review the build output and test reports.' }
+}
+```
 
+**How test reports are published:** The `junit` step is in `post { always }`, so Jenkins records the Surefire XML reports from the child module after every run. This includes failed runs, so a failing test can still be inspected in the Jenkins test report.
 
-Repo: https://github.com/narenkumarchandran/student\_registration\_cia
+**How packaging and archiving are prevented when tests fail:**
 
+* A failing test makes `mvn clean test` exit with a non-zero code. The `bat` step then fails, which marks the `Build and Test` stage and the build as failed.
+* In a Declarative Pipeline, the stages after a failed stage are skipped, so `Package` never runs.
+* `archiveArtifacts` is in `post { success }`, so it runs only when the whole pipeline succeeds. A JAR is never archived from a failed build.
 
+**Jenkins run evidence (job `course_registration`, build #3):**
 
-to get log 
+* The build ran from branch `origin/feature/course-registration-refactor` at revision `ca23c0f`.
+* The console showed 14 tests run with 0 failures, recorded the test results, and archived the artifacts. It ended with `Finished: SUCCESS`.
+* The test report page showed all 14 tests passing in package `com.university`.
+* The archived artifact was `course-registration-app-1.0-SNAPSHOT.jar` (4.79 KiB).
 
-git branch --show-current
+Screenshots of these are in the submitted report.
 
-git log --oneline -5
+---
 
-git status
+## 5. Kubernetes Deployment Evidence (Minikube)
 
-git log --oneline --name-only -5
+### `deployment.yaml`
 
-
-
-PS C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter> git log
-
-commit 2cf44ecd46edd652e41491e9075fce550c8c6621 (HEAD -> feature/course-registration-refactor, origin/feature/course-registration-refactor)
-
-Author: NarenKumar C <narenkumarchandran@gmail.com>
-
-Date:   Tue Oct 13 10:34:08 2026 +0530
-
-
-
-&#x20;   feat: add Kubernetes deployment and service
-
-
-
-commit ca23c0fa820352223d2a839bf75a91e3b51b7591
-
-Author: NarenKumar C <narenkumarchandran@gmail.com>
-
-Date:   Tue Oct 13 10:07:26 2026 +0530
-
-
-
-&#x20;   fix: remove BOM from Jenkinsfile
-
-
-
-commit af05d68f1a680f3a52e6e813c356f126e4c88403
-
-Author: NarenKumar C <narenkumarchandran@gmail.com>
-
-Date:   Tue Oct 13 10:06:24 2026 +0530
-
-
-
-&#x20;   fix: use explicit Maven path in Jenkins
-
-
-
-commit f2b05c34f6c65fcbff7e963ad6cfbcfc1754ef29
-
-Author: NarenKumar C <narenkumarchandran@gmail.com>
-
-Date:   Tue Oct 13 10:04:05 2026 +0530
-
-
-
-&#x20;   fix: save Jenkinsfile without BOM
-
-
-
-commit 50892f85a2e1710ebca780138f345c904117f9b4
-
-Author: NarenKumar C <narenkumarchandran@gmail.com>
-
-Date:   Tue Oct 13 09:56:36 2026 +0530
-
-
-
-:
-
-
-
-Maven Configuration and Build Evidence
-
-
-
-The project uses a Maven multi-module structure.
-
-with
-
-Parent POM defines the parent project and lists the child modules
-
-Child POM course-registration-app/pom.xml identifies the application module and references its paren
-
-Maven Results Maven POM configuration defines or manages dependencies and build settings
-
-Maven Results
-
-The project successfully completed mvn clean test with 14 tests passing The application JAR was also generated by Maven packaging.
-
-
-
-PS C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter> mvn clean test
-
-\[INFO] Scanning for projects...
-
-\[INFO] ------------------------------------------------------------------------
-
-\[INFO] Reactor Build Order:
-
-\[INFO]
-
-\[INFO] student-starter-parent                                             \[pom]
-
-\[INFO] course-registration-app                                            \[jar]
-
-\[INFO]
-
-\[INFO] ---------------< com.university:student-starter-parent >----------------
-
-\[INFO] Building student-starter-parent 1.0-SNAPSHOT                       \[1/2]
-
-\[INFO]   from pom.xml
-
-\[INFO] --------------------------------\[ pom ]---------------------------------
-
-\[INFO] Loaded 24069 auto-discovered prefixes for remote repository central (prefixes-central.txt)
-
-\[INFO]
-
-\[INFO] --- clean:3.5.0:clean (default-clean) @ student-starter-parent ---
-
-\[INFO]
-
-\[INFO] ---------------< com.university:course-registration-app >---------------
-
-\[INFO] Building course-registration-app 1.0-SNAPSHOT                      \[2/2]
-
-\[INFO]   from course-registration-app\\pom.xml
-
-\[INFO] --------------------------------\[ jar ]---------------------------------
-
-\[INFO] Loaded 74 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots.txt)
-
-\[INFO]
-
-\[INFO] --- clean:3.5.0:clean (default-clean) @ course-registration-app ---
-
-\[INFO] Deleting C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter\\course-registration-app\\target
-
-\[INFO]
-
-\[INFO] --- resources:3.5.0:resources (default-resources) @ course-registration-app ---
-
-\[INFO] skip non existing resourceDirectory C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter\\course-registration-app\\src\\main\\resources
-
-\[INFO]
-
-\[INFO] --- compiler:3.13.0:compile (default-compile) @ course-registration-app ---
-
-\[INFO] Recompiling the module because of changed source code.
-
-\[INFO] Compiling 3 source files with javac \[debug target 17] to target\\classes
-
-\[WARNING] system modules path not set in conjunction with -source 17
-
-\[INFO]
-
-\[INFO] --- resources:3.5.0:testResources (default-testResources) @ course-registration-app ---
-
-\[INFO] skip non existing resourceDirectory C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter\\course-registration-app\\src\\test\\resources
-
-\[INFO]
-
-\[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ course-registration-app ---
-
-\[INFO] Recompiling the module because of changed dependency.
-
-\[INFO] Compiling 2 source files with javac \[debug target 17] to target\\test-classes
-
-\[WARNING] system modules path not set in conjunction with -source 17
-
-\[INFO]
-
-\[INFO] --- surefire:3.5.0:test (default-test) @ course-registration-app ---
-
-\[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
-
-\[INFO]
-
-\[INFO] -------------------------------------------------------
-
-\[INFO]  T E S T S
-
-\[INFO] -------------------------------------------------------
-
-\[INFO] Running com.university.CourseTest
-
-\[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.033 s -- in com.university.CourseTest
-
-\[INFO] Running com.university.RegistrationServiceTest
-
-\[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in com.university.RegistrationServiceTest
-
-\[INFO]
-
-\[INFO] Results:
-
-\[INFO]
-
-\[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
-
-\[INFO]
-
-\[INFO] ------------------------------------------------------------------------
-
-\[INFO] Reactor Summary for student-starter-parent 1.0-SNAPSHOT:
-
-\[INFO]
-
-\[INFO] student-starter-parent ............................. SUCCESS \[  0.299 s]
-
-\[INFO] course-registration-app ............................ SUCCESS \[  3.008 s]
-
-\[INFO] ------------------------------------------------------------------------
-
-\[INFO] BUILD SUCCESS
-
-\[INFO] ------------------------------------------------------------------------
-
-\[INFO] Total time:  3.412 s
-
-\[INFO] Finished at: 2026-10-13T11:08:24+05:30
-
-\[INFO] ------------------------------------------------------------------------
-
-PS C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter> mvn clean package
-
-\[INFO] Scanning for projects...
-
-\[INFO] ------------------------------------------------------------------------
-
-\[INFO] Reactor Build Order:
-
-\[INFO]
-
-\[INFO] student-starter-parent                                             \[pom]
-
-\[INFO] course-registration-app                                            \[jar]
-
-\[INFO]
-
-\[INFO] ---------------< com.university:student-starter-parent >----------------
-
-\[INFO] Building student-starter-parent 1.0-SNAPSHOT                       \[1/2]
-
-\[INFO]   from pom.xml
-
-\[INFO] --------------------------------\[ pom ]---------------------------------
-
-\[INFO] Loaded 24069 auto-discovered prefixes for remote repository central (prefixes-central.txt)
-
-\[INFO]
-
-\[INFO] --- clean:3.5.0:clean (default-clean) @ student-starter-parent ---
-
-\[INFO]
-
-\[INFO] ---------------< com.university:course-registration-app >---------------
-
-\[INFO] Building course-registration-app 1.0-SNAPSHOT                      \[2/2]
-
-\[INFO]   from course-registration-app\\pom.xml
-
-\[INFO] --------------------------------\[ jar ]---------------------------------
-
-\[INFO] Loaded 74 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots.txt)
-
-\[INFO]
-
-\[INFO] --- clean:3.5.0:clean (default-clean) @ course-registration-app ---
-
-\[INFO] Deleting C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter\\course-registration-app\\target
-
-\[INFO]
-
-\[INFO] --- resources:3.5.0:resources (default-resources) @ course-registration-app ---
-
-\[INFO] skip non existing resourceDirectory C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter\\course-registration-app\\src\\main\\resources
-
-\[INFO]
-
-\[INFO] --- compiler:3.13.0:compile (default-compile) @ course-registration-app ---
-
-\[INFO] Recompiling the module because of changed source code.
-
-\[INFO] Compiling 3 source files with javac \[debug target 17] to target\\classes
-
-\[WARNING] system modules path not set in conjunction with -source 17
-
-\[INFO]
-
-\[INFO] --- resources:3.5.0:testResources (default-testResources) @ course-registration-app ---
-
-\[INFO] skip non existing resourceDirectory C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter\\course-registration-app\\src\\test\\resources
-
-\[INFO]
-
-\[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ course-registration-app ---
-
-\[INFO] Recompiling the module because of changed dependency.
-
-\[INFO] Compiling 2 source files with javac \[debug target 17] to target\\test-classes
-
-\[WARNING] system modules path not set in conjunction with -source 17
-
-\[INFO]
-
-\[INFO] --- surefire:3.5.0:test (default-test) @ course-registration-app ---
-
-\[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
-
-\[INFO]
-
-\[INFO] -------------------------------------------------------
-
-\[INFO]  T E S T S
-
-\[INFO] -------------------------------------------------------
-
-\[INFO] Running com.university.CourseTest
-
-\[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.029 s -- in com.university.CourseTest
-
-\[INFO] Running com.university.RegistrationServiceTest
-
-\[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in com.university.RegistrationServiceTest
-
-\[INFO]
-
-\[INFO] Results:
-
-\[INFO]
-
-\[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
-
-\[INFO]
-
-\[INFO]
-
-\[INFO] --- jar:3.5.1:jar (default-jar) @ course-registration-app ---
-
-\[INFO] Building jar: C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter\\course-registration-app\\target\\course-registration-app-1.0-SNAPSHOT.jar
-
-\[INFO] ------------------------------------------------------------------------
-
-\[INFO] Reactor Summary for student-starter-parent 1.0-SNAPSHOT:
-
-\[INFO]
-
-\[INFO] student-starter-parent ............................. SUCCESS \[  0.289 s]
-
-\[INFO] course-registration-app ............................ SUCCESS \[  3.031 s]
-
-\[INFO] ------------------------------------------------------------------------
-
-\[INFO] BUILD SUCCESS
-
-\[INFO] ------------------------------------------------------------------------
-
-\[INFO] Total time:  3.429 s
-
-\[INFO] Finished at: 2026-10-13T11:08:30+05:30
-
-\[INFO] ------------------------------------------------------------------------
-
-PS C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter>
-
-
-
-
-
-
-
-
-
-5\. Jenkins Pipeline Explanation
-
-
-
-Jenkins is configured to build the project from the GitHub feature branch.
-
-
-
-Job: course\_registration
-
-
-
-Pipeline stages:
-
-
-
-Checkout: Retrieves the source code from GitHub.
-
-
-
-Build and Test: Runs Maven to compile the project and execute JUnit tests.
-
-
-
-Package: Creates the application JAR after successful testing.
-
-
-
-
-
-6\. Kubernetes Deployment Evidence
-
-
-
-Minikube provides a local Kubernetes environment
-
-Deployment YAML
-
-
-
-&#x20;deployment.yaml defines a Deployment named nginx-deployment
-
+```yaml
 apiVersion: apps/v1
-
 kind: Deployment
-
 metadata:
-
-&#x20; name: nginx-deployment
-
+  name: nginx-deployment
 spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+```
 
-&#x20; replicas: 2
+### `service.yaml`
 
-&#x20; selector:
-
-&#x20;   matchLabels:
-
-&#x20;     app: nginx
-
-&#x20; template:
-
-&#x20;   metadata:
-
-&#x20;     labels:
-
-&#x20;       app: nginx
-
-&#x20;   spec:
-
-&#x20;     containers:
-
-&#x20;       - name: nginx
-
-&#x20;         image: nginx:1.27
-
-&#x20;         ports:
-
-&#x20;           - containerPort: 80
-
-
-
-Service YAML
-
-
-
-service.yaml defines a NodePort 
-
+```yaml
 apiVersion: v1
-
 kind: Service
-
 metadata:
-
-&#x20; name: nginx-service
-
+  name: nginx-service
 spec:
+  type: NodePort
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+```
 
-&#x20; type: NodePort
+The Deployment's selector, the Pod template label and the Service selector all use `app: nginx`. This is how the Service finds the Deployment's Pods.
 
-&#x20; selector:
+### Deployment (2 replicas)
 
-&#x20;   app: nginx
-
-&#x20; ports:
-
-&#x20;   - port: 80
-
-&#x20;     targetPort: 80
-
-&#x20;     nodePort: 30080
-
-
-
-
-
-Verify Deployment 
-
-kubectl get deployments
-
-kubectl get pods -o wide
-
-kubectl get services
-
-kubectl get endpoints nginx-service
-
-
-
-
-
-Scaling
-
-
-
-
-
-kubectl scale deployment nginx-deployment --replicas=3
-
-kubectl get deployments
-
-kubectl get pods
-
-
-
-Pod Self-Healing
-
-
-
-kubectl delete pod <pod-name>
-
-kubectl get pods -w
-
-PS C:\\Users\\iot-a2\\Downloads\\ci cd cia lab\\Student-Starter> kubectl get pods -w
-
+```text
+PS> kubectl apply -f .\deployment.yaml
+deployment.apps/nginx-deployment created
+PS> kubectl get pods -l app=nginx
 NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-75cc477c85-5zcrf   1/1     Running   0          25s
+nginx-deployment-75cc477c85-lbkqn   1/1     Running   0          25s
+```
 
-nginx-deployment-75cc477c85-55smm   1/1     Running   0          32m
+### Service and access
 
-nginx-deployment-75cc477c85-f89ss   1/1     Running   0          34m
+```text
+PS> kubectl apply -f .\service.yaml
+service/nginx-service created
+PS> kubectl get services
+NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+kubernetes      ClusterIP   10.96.0.1       <none>        443/TCP        7m55s
+nginx-service   NodePort    10.102.46.166   <none>        80:30080/TCP   46s
+PS> kubectl get endpoints nginx-service
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME            ENDPOINTS                     AGE
+nginx-service   10.244.0.3:80,10.244.0.4:80   53s
+PS> minikube service nginx-service --url
+http://127.0.0.1:60831
+```
 
-nginx-deployment-75cc477c85-lbkqn   1/1     Running   0          38m
+The two endpoints are the two Nginx Pods, which confirms the Service selects the intended Pods. Opening `http://127.0.0.1:60831` in a browser showed the "Welcome to nginx!" page.
 
-Defect Correction
+### Scaling from 2 to 3 replicas
 
+```text
+PS> kubectl scale deployment nginx-deployment --replicas=3
+deployment.apps/nginx-deployment scaled
+PS> kubectl get pods -l app=nginx
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-75cc477c85-5zcrf   1/1     Running   0          4m53s
+nginx-deployment-75cc477c85-f89ss   1/1     Running   0          1s
+nginx-deployment-75cc477c85-lbkqn   1/1     Running   0          4m53s
+PS> kubectl get deployments
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3/3     3            3           5m41s
+```
 
+### Self-healing
 
-as required course-capacity validation was corrected to reject a new registration when the registered count is already equal to the course capacity. The condition uses registeredCount >= capacity, preventing the course from exceeding its capacity.
+```text
+PS> kubectl delete pod nginx-deployment-75cc477c85-5zcrf
+pod "nginx-deployment-75cc477c85-5zcrf" deleted from default namespace
+PS> kubectl get pods -l app=nginx
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-75cc477c85-55smm   1/1     Running   0          10s
+nginx-deployment-75cc477c85-f89ss   1/1     Running   0          87s
+nginx-deployment-75cc477c85-lbkqn   1/1     Running   0          6m19s
+```
 
+Pod `5zcrf` was deleted, and a new Pod `55smm` (age 10s) replaced it. The count stayed at 3, and all Pods are `Running`.
 
+### How the Deployment controller maintains the replica count
 
-Audit Log — Question Set F
+A Deployment manages a ReplicaSet, which holds the desired replica count (`spec.replicas`). The controller runs a reconciliation loop: it keeps comparing the number of running Pods that match the `app: nginx` selector against the desired count. When we scaled to 3, it created one extra Pod to close the gap. When a Pod was deleted, the actual count dropped to 2, so the ReplicaSet controller immediately created a replacement from the Pod template to restore 3.
 
+---
 
+## 6. Change Summary and Limitations
 
-in-memory audit log is made
+### Defect correction (Task 3)
 
-Each entry has the student ID and course code for a successful registration.
+The baseline capacity check let a student register for a course that was already full. The new test `shouldRejectRegistrationWhenCourseIsFull` failed with `expected: <false> but was: <true>`. The condition was corrected to reject a registration when `registeredCount >= capacity`. A full course now rejects new students, and the last remaining seat can still be filled. Capacity validation was kept, not removed, and all existing tests still pass.
 
+### Assigned change request — Set F audit log (Task 4)
 
+`RegistrationService` now keeps an in-memory audit log. It adds one entry only when a registration succeeds. Rejected registrations add nothing, and earlier entries are never removed or duplicated.
 
+**Entry format:** `Student <studentId> successfully registered for course <courseCode>`
+Example: `Student S101 successfully registered for course JAVA101`
 
+Focused JUnit tests cover:
 
-Student S101 successfully registered for course JAVA101
+* a successful registration;
+* a rejected registration;
+* the audit-log entry count and content.
 
+### Modified and added files
 
+* `pom.xml` (now the parent POM)
+* `course-registration-app/pom.xml` (new child POM)
+* `course-registration-app/src/main/java/com/university/*` (moved; capacity fix and audit log added)
+* `course-registration-app/src/test/java/com/university/*` (moved; new capacity and audit-log tests)
+* `Jenkinsfile`
+* `deployment.yaml`
+* `service.yaml`
+* `README.md`
 
-Files to check
+### Known limitations
 
-to see git log 
-
-&#x20;git log --oneline --name-only -5 :
-
-
-
-RegistrationService.java 
-
-
-
-Registration service test files 
-
-
-
-Jenkinsfile 
-
-
-
-deployment.yaml 
-
-
-
-service.yaml 
-
-
-
-README.md 
-
-limitation
-
-
-
-The audit log is stored in memory and is lost when the application restarts.
-
-
-
-The audit log does not use a database or external logging service.
-
-Minikube is a local learning environment rather than a production Kubernetes cluster.
-
-
-
-8\. Conclusion
-
-
-
-This project demonstrates Maven based Java building and testing Git and GitHub version control Jenkins CI automation and basic Kubernetes deployment. The course-capacity defect was corrected an in-memory audit log was implemented with focused JUnit tests and the Kubernetes exercise demonstrated service exposure scaling and Pod self-healing.
-
+* The audit log lives in memory only, so it is lost when the application restarts. It does not use a database or external logging service.
+* The tests, defect fix and audit-log commits (`234e0f1`, `edcfda2`, `4da0a14`) were made before the feature branch was created, so they sit below the branch point in the history. The restructure, Jenkins and Kubernetes work was done on the feature branch and merged into `main`.
+* The Jenkins build ran from the feature branch (build #3), before the merge into `main`.
+* The Jenkinsfile targets a Windows agent (`bat` and an explicit Maven path), so it would need `sh` steps to run on a Linux agent.
+* Minikube is a local, single-node learning environment, not a production cluster. With the Docker driver on Windows, the service is reached through a `minikube service` tunnel rather than directly on NodePort 30080.
