@@ -1,4 +1,4 @@
-pipeline {
+﻿pipeline {
     agent any
 
     stages {
@@ -10,13 +10,13 @@ pipeline {
 
         stage('Build and Test') {
             steps {
-                bat 'mvn clean test'
+                bat '"C:\\Users\\iot-a2\\apache-maven-3.10.0\\bin\\mvn.cmd" clean test'
             }
         }
 
         stage('Package') {
             steps {
-                bat 'mvn package'
+                bat '"C:\\Users\\iot-a2\\apache-maven-3.10.0\\bin\\mvn.cmd" package'
             }
         }
     }
