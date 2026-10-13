@@ -181,4 +181,49 @@ void shouldAllowRegistrationWhenOneSeatRemains() {
     assertEquals(2, course.getCurrentEnrollment());
     assertEquals(4, student.getTotalCredits());
 }
+    @Test
+    void shouldRecordSuccessfulRegistrationInAuditLog() {
+        Student student = new Student("S104", "Kumar");
+        Course course = new Course("CS303", "Operating Systems", 4, 30, true, null);
+        RegistrationService service = new RegistrationService();
+
+        boolean result = service.register(student, course);
+
+        assertTrue(result);
+        assertEquals(1, service.getAuditLog().size());
+        assertTrue(service.getAuditLog().get(0).contains("S104"));
+        assertTrue(service.getAuditLog().get(0).contains("CS303"));
+    }
+
+    @Test
+    void shouldNotRecordRejectedRegistrationInAuditLog() {
+        Student student = new Student("S105", "Meena");
+        Course course = new Course("CS304", "Computer Networks", 4, 1, true, null);
+        course.incrementEnrollment(); // Course is already full
+
+        RegistrationService service = new RegistrationService();
+
+        boolean result = service.register(student, course);
+
+        assertFalse(result);
+        assertTrue(service.getAuditLog().isEmpty());
+    }
+
+    @Test
+    void failedAttemptShouldNotChangePreviousAuditEntry() {
+        Student student = new Student("S106", "Arun");
+        Course course = new Course("CS305", "Database Systems", 4, 30, true, null);
+        RegistrationService service = new RegistrationService();
+
+        assertTrue(service.register(student, course));
+        assertEquals(1, service.getAuditLog().size());
+
+        String originalEntry = service.getAuditLog().get(0);
+
+        // Attempt to register for the same course again.
+        assertFalse(service.register(student, course));
+
+        assertEquals(1, service.getAuditLog().size());
+        assertEquals(originalEntry, service.getAuditLog().get(0));
+    }
 }
